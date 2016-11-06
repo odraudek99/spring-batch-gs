@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	 xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/batch
+	http://www.springframework.org/schema/batch/spring-batch.xsd
+	http://www.springframework.org/schema/jdbc
+	http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+	http://www.springframework.org/schema/context  
+    http://www.springframework.org/schema/context/spring-context-3.0.xsd
+    http://www.springframework.org/schema/util 
+    http://www.springframework.org/schema/util/spring-util.xsd
+    ">
+
+	
+
+	 <context:component-scan base-package="mx.com.odraudek99.batch"/>  
+	<bean id="jobLauncher" class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+	<property name="jobRepository" ref="jobRepository"/>
+	</bean>
+	
+	<bean id="batchJobOperator" class="org.springframework.batch.core.launch.support.SimpleJobOperator">
+	<property name="jobExplorer" ref="jobExplorer"/>
+	<property name="jobLauncher" ref="jobLauncher"/>
+	<property name="jobRepository" ref="jobRepository"/>
+	<property name="jobRegistry" ref="jobRegistry"/>
+	</bean>
+	
+	<bean id="jobExplorer" class="org.springframework.batch.core.explore.support.JobExplorerFactoryBean">
+	<property name="dataSource" ref="dataSource"/>
+	</bean>
+		
+   
+	
+	
+	<!-- START: HSQL -->
+ 
+	<!-- <jdbc:initialize-database data-source="dataSource">
+	    <jdbc:script location="classpath:hsqldb/initial-query.sql" />
+		<jdbc:script location="org/springframework/batch/core/schema-drop-hsqldb.sql" />
+		<jdbc:script location="org/springframework/batch/core/schema-hsqldb.sql" />
+    </jdbc:initialize-database> -->
+	
+	
+   
+    <!-- <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		lazy-init="true" destroy-method="close">
+		<property name="driverClassName" value="org.hsqldb.jdbcDriver" />
+		<property name="url" value="jdbc:hsqldb:file:src/main/resources/hsqldb/batchcore.db;shutdown=true;" />		
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+
+	</bean> 
+	 <bean id="jobRepository"
+	class="org.springframework.batch.core.repository.support.JobRepositoryFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="databaseType" value="hsql" />
+		
+  	</bean> -->
+	<!-- END: HSQL -->
+	
+	
+	
+	
+	<!-- START: SQLITE -->
+	 <jdbc:initialize-database data-source="dataSource">
+        <jdbc:script location="org/springframework/batch/core/schema-drop-sqlite.sql" />
+        <jdbc:script location="org/springframework/batch/core/schema-sqlite.sql" />
+        <jdbc:script location="classpath:/hsqldb/initial-query-lite.sql" />
+    </jdbc:initialize-database>
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		lazy-init="true" destroy-method="close">
+		<property name="driverClassName" value="org.sqlite.JDBC" />
+		<property name="url" value="jdbc:sqlite:repository.sqlite" />		
+		<property name="username" value="" />
+		<property name="password" value="" />
+
+	</bean> 
+	 <bean id="jobRepository"
+	class="org.springframework.batch.core.repository.support.JobRepositoryFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="databaseType" value="SQLite" />
+  	</bean>
+	
+	<!-- END: SQLITE -->
+	
+	
+	
+	
+	<bean id="jobParametersConverter" class="org.springframework.batch.core.jsr.JsrJobParametersConverter">
+	<constructor-arg ref="dataSource"/>
+	</bean>
+	
+	<bean id="jobRegistry" class="org.springframework.batch.core.configuration.support.MapJobRegistry"/>
+	
+
+   
+	
+	
+	
+ 
+  
+    <bean id="transactionManager"
+	class="org.springframework.batch.support.transaction.ResourcelessTransactionManager" />
+	
+	</beans>
