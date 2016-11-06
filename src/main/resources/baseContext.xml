@@ -21,6 +21,9 @@
 
 	<context:component-scan base-package="mx.com.odraudek99.batch"/>  
 	
+	<import resource="classpath:simpleJob.xml" />
+	
+	
 	<!-- START: HSQL -->
  
 	<!-- 

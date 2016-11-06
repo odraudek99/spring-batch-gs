@@ -14,6 +14,8 @@ import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.job.builder.FlowBuilder;
+import org.springframework.batch.core.job.flow.Flow;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.item.ItemProcessor;
@@ -28,7 +30,9 @@ import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor;
 import org.springframework.batch.item.file.transform.DelimitedLineAggregator;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.batch.item.xml.StaxEventItemWriter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
@@ -37,6 +41,10 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import mx.com.odraudek99.batch.jobs.fileProcessor.model.AnotherElement;
+import mx.com.odraudek99.batch.jobs.fileProcessor.model.Element;
+import mx.com.odraudek99.batch.jobs.fileProcessor.model.ElementProcessor;
+
 
 
 @Component
@@ -44,7 +52,7 @@ public class BatchConfiguration {
 
     
     // tag::readerwriterprocessor[]
-    @Bean
+    @Bean (name={"reader1"})
     public ItemReader<Person> reader() {
         FlatFileItemReader<Person> reader = new FlatFileItemReader<Person>();
         reader.setResource(new ClassPathResource("sample-data.csv"));
@@ -60,13 +68,13 @@ public class BatchConfiguration {
         return reader;
     }
 
-    @Bean
+    @Bean(name={"processor1"})
     public ItemProcessor<Person, Person> processor() {
         return new PersonItemProcessor();
     }
 
 
-    @Bean
+    @Bean(name={"writer1"})
     @Autowired
     public ItemWriter<Person> writer(DataSource dataSource) {
     	FlatFileItemWriter<Person> writer = new FlatFileItemWriter<Person>();
@@ -85,12 +93,9 @@ public class BatchConfiguration {
         return writer;
     }
     
-
-
-
     
     
-    @Bean
+    @Bean(name={"writer2"})
     @Autowired
     public JdbcBatchItemWriter<Person> writer2(DataSource dataSource) {
         JdbcBatchItemWriter<Person> writer = new JdbcBatchItemWriter<Person>();
@@ -103,29 +108,50 @@ public class BatchConfiguration {
     // end::readerwriterprocessor[]
 
     // tag::jobstep[]
-    @Bean
+    @Bean(name={"importUserJob"})
     @Autowired
-    public Job importUserJob(JobRepository jobRepository, Step s1,JobExecutionListener jobListener) {
+    public Job importUserJob(JobRepository jobRepository, 
+    @Qualifier("step1") Step step1, @Qualifier("processFileStep") Step processFileStep,
+    JobExecutionListener jobListener) {
         JobBuilderFactory jobs=new JobBuilderFactory( jobRepository);
-        return jobs.get("importUserJob").listener(jobListener)
-                .incrementer(new RunIdIncrementer())
-                .flow(s1)
+        
+        Flow flowStep1 = new FlowBuilder<Flow>("flowStep1")
+                        .start(step1)
+                        .build();
+        Flow flowStep2 = new FlowBuilder<Flow>("flowStep2")
+                        .start(processFileStep)
+                        .build();
+        
+        
+        return jobs.get("importUserJob").start(flowStep1)
+        		.on("FAILED")
+                .end()
+                .on("COMPLETED")
+                .to( flowStep2  )
                 .end()
                 .build();
+                
+
     }
 
-    @Bean
-    @Autowired
-    public Step step1(JobRepository jobRepository,  ItemReader<Person> reader,JdbcBatchItemWriter<Person> writer2,
-            ItemWriter<Person> writer, ItemProcessor<Person, Person> processor, PlatformTransactionManager transactionManager) {
+    @Bean (name={"step1"})
+    @Autowired 
+    public Step step1(JobRepository jobRepository,
+     	@Qualifier("reader1") ItemReader<Person> reader1, 
+     	@Qualifier("writer2") JdbcBatchItemWriter<Person> writer2,
+		@Qualifier("writer1") ItemWriter<Person> writer1,
+		@Qualifier("processor1") ItemProcessor<Person, Person> processor1,
+    	PlatformTransactionManager transactionManager) {
         StepBuilderFactory stepBuilderFactory = new StepBuilderFactory(jobRepository, transactionManager);
         return stepBuilderFactory.get("step1")
                 .<Person, Person> chunk(1)
-                .reader(reader)
-                .processor(processor)
-                .writer(writer).writer(writer2)
+                .reader(reader1)
+                .processor(processor1)
+                .writer(writer1).writer(writer2)
                 .build();
     }
+    
+
     // end::jobstep[]
 
     @Bean

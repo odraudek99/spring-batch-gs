@@ -16,8 +16,12 @@ public class Application {
     
     public static void main(String[] args) {
         try {
-            CommandLineJobRunner.main(new String[] { "baseContext.xml",
-                "importUserJob" });
+            
+//            CommandLineJobRunner.main(new String[] { "baseContext.xml", "processFileJob"});
+            
+            CommandLineJobRunner.main(new String[] { "baseContext.xml", "importUserJob"});
+            
+            
         } catch (Exception e) {
         	
             System.out.println("ERROR EN EJECUCION");
