@@ -129,19 +129,26 @@ public class BatchConfiguration {
     // end::jobstep[]
 
     @Bean
-  
     public JdbcTemplate jdbcTemplate(DataSource dataSource) {
         return new JdbcTemplate(dataSource);
     }
+    
     @Bean
-    public JobExecutionListener listenerJob(final DataSource dataSource){
+    public JdbcTemplate jdbcTemplateSpring(DataSource dataSourceSpring) {
+        return new JdbcTemplate(dataSourceSpring);
+    }
+    
+    
+    @Bean
+    public JobExecutionListener listenerJob(final DataSource dataSourceSpring, final DataSource dataSource){
         JobExecutionListener listener=new JobExecutionListener() {
 
 
             public void afterJob(JobExecution arg0) {
                 System.out.println( "Acces DB");
-
+                JdbcTemplate jdbcTemplateSpring = new JdbcTemplate(dataSourceSpring);
                 JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+                
                 List<Person> results = jdbcTemplate.query("SELECT first_name, last_name FROM people", new RowMapper<Person>() {
            
 
@@ -155,7 +162,7 @@ public class BatchConfiguration {
                     System.out.println("Found <" + person + "> in the database.");
                 }
                 System.out.println("Estatisticas  de JOB");
-                List<Map<String,String>> results1 = jdbcTemplate.query("SELECT * FROM BATCH_JOB_INSTANCE", new RowMapper<Map<String, String>>() {
+                List<Map<String,String>> results1 = jdbcTemplateSpring.query("SELECT * FROM BATCH_JOB_INSTANCE", new RowMapper<Map<String, String>>() {
                
 
                     public Map<String, String> mapRow(ResultSet rs, int row) throws SQLException {

@@ -47,9 +47,20 @@
 	
 	
 	<!-- START: SQLITE -->
-	 <jdbc:initialize-database data-source="dataSource">
+	 <jdbc:initialize-database data-source="dataSourceSpring" >
         <jdbc:script location="org/springframework/batch/core/schema-drop-sqlite.sql" />
         <jdbc:script location="org/springframework/batch/core/schema-sqlite.sql" />
+    </jdbc:initialize-database>
+    
+    <bean id="dataSourceSpring" class="org.apache.commons.dbcp.BasicDataSource" lazy-init="true" destroy-method="close">
+		<property name="driverClassName" value="org.sqlite.JDBC" />
+		<property name="url" value="jdbc:sqlite:repositorySpring.sqlite" />		
+		<property name="username" value="" />
+		<property name="password" value="" />
+	</bean> 
+	
+	
+	 <jdbc:initialize-database data-source="dataSource"  >
         <jdbc:script location="classpath:/hsqldb/initial-query-lite.sql" />
     </jdbc:initialize-database>
     
@@ -60,8 +71,10 @@
 		<property name="password" value="" />
 	</bean> 
 	
+	
+	
 	<bean id="jobRepository" class="org.springframework.batch.core.repository.support.JobRepositoryFactoryBean">
-		<property name="dataSource" ref="dataSource" />
+		<property name="dataSource" ref="dataSourceSpring" />
 		<property name="transactionManager" ref="transactionManager" />
 		<property name="databaseType" value="SQLite" />
   	</bean>
@@ -74,7 +87,7 @@
 	</bean>
 	
 	<bean id="jobExplorer" class="org.springframework.batch.core.explore.support.JobExplorerFactoryBean">
-		<property name="dataSource" ref="dataSource"/>
+		<property name="dataSource" ref="dataSourceSpring"/>
 	</bean>
 	
 	<bean id="jobRegistry" class="org.springframework.batch.core.configuration.support.MapJobRegistry"/>
@@ -89,7 +102,7 @@
 	
 	
 	<bean id="jobParametersConverter" class="org.springframework.batch.core.jsr.JsrJobParametersConverter">
-		<constructor-arg ref="dataSource"/>
+		<constructor-arg ref="dataSourceSpring"/>
 	</bean>
 	
 	
@@ -102,4 +115,3 @@
 	
 	
 </beans>
-
