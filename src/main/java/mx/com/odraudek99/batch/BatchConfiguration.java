@@ -12,12 +12,16 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.job.builder.FlowBuilder;
 import org.springframework.batch.core.job.flow.Flow;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
@@ -31,16 +35,19 @@ import org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor;
 import org.springframework.batch.item.file.transform.DelimitedLineAggregator;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.batch.item.xml.StaxEventItemWriter;
+import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import mx.com.odraudek99.batch.exception.BatchException;
 import mx.com.odraudek99.batch.jobs.fileProcessor.model.AnotherElement;
 import mx.com.odraudek99.batch.jobs.fileProcessor.model.Element;
 import mx.com.odraudek99.batch.jobs.fileProcessor.model.ElementProcessor;
@@ -112,7 +119,7 @@ public class BatchConfiguration {
     @Autowired
     public Job importUserJob(JobRepository jobRepository, 
     @Qualifier("step1") Step step1, @Qualifier("processFileStep") Step processFileStep,
-    JobExecutionListener jobListener) {
+    JobExecutionListener jobListener, PlatformTransactionManager transactionManager) {
         JobBuilderFactory jobs=new JobBuilderFactory( jobRepository);
         
         Flow flowStep1 = new FlowBuilder<Flow>("flowStep1")
@@ -121,16 +128,19 @@ public class BatchConfiguration {
         Flow flowStep2 = new FlowBuilder<Flow>("flowStep2")
                         .start(processFileStep)
                         .build();
-        
-        
         return jobs.get("importUserJob").listener(jobListener)
-        		.start(flowStep1)
-        		.on("FAILED")
-                .end()
-                .on("COMPLETED")
-                .to( flowStep2  )
-                .end()
-                .build();
+        	.start(incioflow(jobRepository, transactionManager)).split(
+        	simpleAsyncTaskExecutor()).add(
+                        		flowStep1, flowStep2).build().build();
+        
+//        return jobs.get("importUserJob").listener(jobListener)
+//        		.start(flowStep1)
+//        		.on("FAILED")
+//                .end()
+//                .on("COMPLETED")
+//                .to( flowStep2  )
+//                .end()
+//                .build();
                 
 //        return jobs.get("importUserJob").listener(jobListener)
 //                .incrementer(new RunIdIncrementer())
@@ -138,6 +148,31 @@ public class BatchConfiguration {
 //                .end()
 //                .build();
     }
+    
+    private SimpleAsyncTaskExecutor simpleAsyncTaskExecutor() {
+
+        org.springframework.core.task.SimpleAsyncTaskExecutor asy = new SimpleAsyncTaskExecutor();
+        asy.setConcurrencyLimit(2);
+        return asy;
+    }
+
+	private Step incioflow(JobRepository jobRepository,
+            PlatformTransactionManager transactionManager) {
+        StepBuilderFactory stepBuilderFactory = new StepBuilderFactory(
+                jobRepository, transactionManager);
+
+        TaskletStep step = stepBuilderFactory.get("Inicio")
+                .tasklet(new Tasklet() {
+
+                    public RepeatStatus execute(StepContribution arg0,
+                            ChunkContext arg1) throws BatchException {
+
+                        return null;
+                    }
+                }).build();
+        return step;
+    }
+    
 
     @Bean (name={"step1"})
     @Autowired 
