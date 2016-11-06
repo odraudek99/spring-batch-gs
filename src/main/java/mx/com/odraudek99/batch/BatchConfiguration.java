@@ -123,7 +123,8 @@ public class BatchConfiguration {
                         .build();
         
         
-        return jobs.get("importUserJob").start(flowStep1)
+        return jobs.get("importUserJob").listener(jobListener)
+        		.start(flowStep1)
         		.on("FAILED")
                 .end()
                 .on("COMPLETED")
@@ -131,7 +132,11 @@ public class BatchConfiguration {
                 .end()
                 .build();
                 
-
+//        return jobs.get("importUserJob").listener(jobListener)
+//                .incrementer(new RunIdIncrementer())
+//                .flow(step1,flow61119)
+//                .end()
+//                .build();
     }
 
     @Bean (name={"step1"})
